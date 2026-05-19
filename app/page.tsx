@@ -1,65 +1,165 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+
+const AUDIENCE_OPTIONS = [
+  { value: "ops", label: "운영팀", desc: "시스템 동작·어드민 설정·에러 케이스" },
+  { value: "md", label: "MD팀", desc: "상품·콘텐츠 등록 및 관리" },
+  { value: "user", label: "사용자", desc: "서비스 이용 방법 안내" },
+];
 
 export default function Home() {
+  const [url, setUrl] = useState("");
+  const [audience, setAudience] = useState("ops");
+  const [guide, setGuide] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [screenCount, setScreenCount] = useState(0);
+  const [generatedAudience, setGeneratedAudience] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setGuide("");
+
+    try {
+      const res = await fetch("/api/generate-guide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ figmaUrl: url, audience }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "오류가 발생했습니다.");
+        return;
+      }
+
+      setGuide(data.guide);
+      setScreenCount(data.screenCount);
+      setGeneratedAudience(audience);
+    } catch {
+      setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(guide);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleDownload() {
+    const label = AUDIENCE_OPTIONS.find((o) => o.value === generatedAudience)?.label ?? "";
+    const blob = new Blob([guide], { type: "text/markdown;charset=utf-8" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = `운영가이드_${label}.md`;
+    a.click();
+    URL.revokeObjectURL(downloadUrl);
+  }
+
+  const selectedOption = AUDIENCE_OPTIONS.find((o) => o.value === audience);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">운영 가이드 자동 생성</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Figma 화면설계서 URL을 입력하면 대상별 가이드 초안을 생성합니다.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <form onSubmit={handleSubmit} className="mb-6 space-y-3">
+          {/* 대상 선택 */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-gray-600">가이드 대상</p>
+            <div className="flex gap-2">
+              {AUDIENCE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setAudience(opt.value)}
+                  disabled={loading}
+                  className={`flex-1 rounded-lg border px-3 py-2.5 text-left transition-colors disabled:opacity-50 ${
+                    audience === opt.value
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <p className="text-sm font-medium">{opt.label}</p>
+                  <p className="mt-0.5 text-xs text-gray-500">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* URL 입력 */}
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://www.figma.com/design/..."
+              className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            <button
+              type="submit"
+              disabled={loading || !url.trim()}
+              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? "생성 중..." : "가이드 생성"}
+            </button>
+          </div>
+        </form>
+
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {loading && (
+          <div className="flex items-center justify-center py-16 text-sm text-gray-400">
+            {selectedOption?.label} 가이드 생성 중...
+          </div>
+        )}
+
+        {guide && (
+          <div className="rounded-lg border border-gray-200 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+              <span className="text-sm text-gray-500">
+                화면 {screenCount}개 · {AUDIENCE_OPTIONS.find((o) => o.value === generatedAudience)?.label} 가이드 초안
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDownload}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  노션용 다운로드
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  {copied ? "복사됨 ✓" : "전체 복사"}
+                </button>
+              </div>
+            </div>
+            <pre className="whitespace-pre-wrap p-4 text-sm text-gray-800 font-sans leading-relaxed overflow-auto max-h-[60vh]">
+              {guide}
+            </pre>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
