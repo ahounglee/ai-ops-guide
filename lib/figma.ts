@@ -139,10 +139,23 @@ export function groupFramesByPrefix(children: FigmaNode[]): ScreenPair[] {
   return result;
 }
 
-export function buildUserMessage(pairs: ScreenPair[]): string {
-  return pairs
+export function extractSpecContent(children: FigmaNode[]): string {
+  const specFrames = children.filter(
+    (f) => f.name.includes("스펙") || f.name.includes("정책")
+  );
+  const texts = specFrames.flatMap((f) => extractTextFromNode(f)).filter((t) => t.trim());
+  return texts.join("\n");
+}
+
+export function buildUserMessage(pairs: ScreenPair[], specContent?: string): string {
+  const screenPart = pairs
     .map((pair, i) => `화면 ${i + 1}: ${pair.name}\n${pair.texts.join("\n")}`)
     .join("\n\n---\n\n");
+
+  if (specContent) {
+    return `[기능 정의 / 스펙 / 정책]\n${specContent}\n\n===\n\n[화면별 설명]\n${screenPart}`;
+  }
+  return screenPart;
 }
 
 export function extractFileKey(url: string): string | null {
