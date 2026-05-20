@@ -3,14 +3,13 @@
 import { useState } from "react";
 
 const AUDIENCE_OPTIONS = [
-  { value: "ops", label: "운영팀", desc: "시스템 동작·어드민 설정·에러 케이스" },
-  { value: "md", label: "MD팀", desc: "상품·콘텐츠 등록 및 관리" },
+  { value: "admin", label: "운영/MD", desc: "어드민 세팅·생성·관리 방법" },
   { value: "user", label: "사용자", desc: "서비스 이용 방법 안내" },
 ];
 
 export default function Home() {
   const [url, setUrl] = useState("");
-  const [audience, setAudience] = useState("ops");
+  const [audience, setAudience] = useState("admin");
   const [guide, setGuide] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
