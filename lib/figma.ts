@@ -153,9 +153,19 @@ export function buildUserMessage(pairs: ScreenPair[], specContent?: string): str
     .join("\n\n---\n\n");
 
   if (specContent) {
-    return `[기능 정의 / 스펙 / 정책]\n${specContent}\n\n===\n\n[화면별 설명]\n${screenPart}`;
+    return `아래 두 가지 자료를 바탕으로 운영 가이드를 작성하세요.
+
+[배경 지식 — 기능 정의 / 스펙 / 정책]
+※ 이 내용은 가이드 작성을 위한 배경 지식입니다. 요약하거나 그대로 옮기지 말고, 가이드의 기능 개요와 유의사항을 작성하는 데 활용하세요.
+${specContent}
+
+===
+
+[화면별 설명 — 가이드 작성의 주요 소재]
+※ 각 화면의 설명을 운영자/사용자가 실제로 무엇을 해야 하는지 행동 지침으로 변환하세요.
+${screenPart}`;
   }
-  return screenPart;
+  return `아래 화면별 설명을 바탕으로 운영 가이드를 작성하세요.\n\n${screenPart}`;
 }
 
 export function extractFileKey(url: string): string | null {
