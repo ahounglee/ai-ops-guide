@@ -175,5 +175,7 @@ export function extractFileKey(url: string): string | null {
 
 export function extractNodeId(url: string): string | null {
   const match = url.match(/node-id=([^&]+)/);
-  return match ? match[1].replace(/-/g, ":") : null;
+  if (!match) return null;
+  const decoded = decodeURIComponent(match[1]);
+  return decoded.replace(/-/g, ":");
 }
