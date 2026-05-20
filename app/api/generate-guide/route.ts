@@ -129,7 +129,7 @@ ${GUIDE_STRUCTURE_USER}
 ${BASE_RULES}`,
 };
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   try {
@@ -211,8 +211,37 @@ export async function POST(req: NextRequest) {
     const specContent = extractSpecContent(pageChildren);
     const userMessage = buildUserMessage(pairs, specContent || undefined);
 
-    // Gemini API 호출 — 503 시 fallback 모델로 재시도
     const models = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-flash-latest"];
+
+    // admin: 2단계 호출 — 1단계에서 필드 목록 추출 후 2단계에서 가이드 생성
+    let finalUserMessage = userMessage;
+    if (audience === "admin") {
+      const extractionPrompt = `아래 디스크립션에서 운영자가 직접 입력하거나 선택하는 모든 필드명을 추출하세요.
+조건부 하위 항목(최솟값, 최댓값, 할인 조건 세부값, 수량 제한 등)도 빠짐없이 포함합니다.
+필드명만 쉼표로 구분하여 한 줄로 출력합니다. 설명이나 다른 텍스트는 추가하지 않습니다.
+
+${userMessage}`;
+
+      let fieldList = "";
+      for (const modelName of models) {
+        try {
+          const extractModel = genAI.getGenerativeModel({ model: modelName });
+          const extractResult = await extractModel.generateContent(extractionPrompt);
+          fieldList = extractResult.response.text().trim();
+          break;
+        } catch (e: unknown) {
+          const status = (e as { status?: number }).status;
+          if (status === 503 || status === 429) continue;
+          throw e;
+        }
+      }
+
+      if (fieldList) {
+        finalUserMessage = `${userMessage}\n\n[입력 항목 표에 반드시 포함해야 할 필드 목록]\n${fieldList}\n위 필드들은 하나도 빠짐없이 입력 항목 표에 독립 행으로 포함되어야 합니다.`;
+      }
+    }
+
+    // 가이드 생성
     let guide = "";
     for (const modelName of models) {
       try {
@@ -220,7 +249,7 @@ export async function POST(req: NextRequest) {
           model: modelName,
           systemInstruction: systemPrompt,
         });
-        const result = await model.generateContent(userMessage);
+        const result = await model.generateContent(finalUserMessage);
         guide = result.response.text();
         break;
       } catch (e: unknown) {
