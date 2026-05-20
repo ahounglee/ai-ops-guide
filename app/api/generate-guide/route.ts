@@ -159,16 +159,24 @@ export async function POST(req: NextRequest) {
 
     let pageChildren: FigmaNode[];
     if (nodeId) {
-      const nodeIdColon = nodeId;
-      const nodeDoc = figmaData.nodes?.[nodeIdColon]?.document;
+      const nodeDoc = figmaData.nodes?.[nodeId]?.document;
+      console.log("[figma] nodeId:", nodeId);
+      console.log("[figma] nodes keys:", Object.keys(figmaData.nodes ?? {}));
+      console.log("[figma] nodeDoc type:", nodeDoc?.type, "children count:", nodeDoc?.children?.length ?? 0);
+      // SECTION 또는 PAGE 타입인 경우 children 바로 사용, FRAME이면 children 사용
       pageChildren = nodeDoc?.children ?? [];
+      // node 자체가 컨텐츠인 경우(children 없음) — node를 배열로 감싸서 처리
+      if (!pageChildren.length && nodeDoc) {
+        pageChildren = [nodeDoc];
+      }
     } else {
       pageChildren = figmaData.document?.children?.[0]?.children ?? [];
     }
 
     if (!pageChildren.length) {
+      const nodeKeys = nodeId ? Object.keys(figmaData.nodes ?? {}).join(", ") : "";
       return NextResponse.json(
-        { error: "화면이 감지되지 않았습니다. URL의 node-id가 올바른지 확인해주세요." },
+        { error: `화면이 감지되지 않았습니다. [진단] nodeId: ${nodeId ?? "없음"} / 응답 키: ${nodeKeys || "없음"}` },
         { status: 400 }
       );
     }
