@@ -141,7 +141,12 @@ export function groupFramesByPrefix(children: FigmaNode[]): ScreenPair[] {
 
 export function extractSpecContent(children: FigmaNode[]): string {
   const specFrames = children.filter(
-    (f) => f.name.includes("스펙") || f.name.includes("정책")
+    (f) =>
+      f.name.includes("스펙") ||
+      f.name.includes("정책") ||
+      f.name.includes("개요") ||
+      f.name.includes("업무범위") ||
+      f.name.includes("용어")
   );
   const texts = specFrames.flatMap((f) => extractTextFromNode(f)).filter((t) => t.trim());
   return texts.join("\n");
